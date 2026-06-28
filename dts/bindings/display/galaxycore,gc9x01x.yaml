@@ -1,0 +1,21 @@
+description: GalaxyCore GC9X01X display controller
+compatible: "galaxycore,gc9x01x"
+include: [spi-device.yaml, display-controller.yaml]
+properties:
+  mipi-mode:
+    type: string
+    required: true
+  mipi-max-frequency:
+    type: int
+    required: true
+  pixel-format:
+    type: int
+    required: true
+  display-inversion:
+    type: boolean
+  width:
+    type: int
+    required: true
+  height:
+    type: int
+    required: true

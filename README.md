@@ -1,13 +1,15 @@
 # Hacktor Basic
 
-Small Zephyr application for the `Hacktor Watch` that brings up a round SPI LCD and capacitive touch panel.
+Small Zephyr application for the `Hacktor Watch` that brings up a round SPI LCD, a capacitive touch panel, and streams sensor data over Bluetooth.
 
-The project currently does four things:
+The project currently does five things:
 
 - routes the Zephyr console and shell to the ESP32-S3 native USB serial/JTAG port
 - initializes a `GC9A01` 240x240 round LCD over `SPI3`
 - initializes a `CST816T`-style touch controller on `I2C`
 - runs a minimal LVGL UI that shows `Hello!`, touch coordinates, and a touch indicator dot
+- establishes a Bluetooth Low Energy (BLE) peripheral connection to send live sensor data to a smartphone
+
 
 ## Hardware
 
@@ -19,10 +21,12 @@ Connected peripherals:
 
 - LCD controller: `GC9A01`
 - Touch controller: `CST816T` using Zephyr's `hynitron,cst816s` driver path
+- BLE Radio: ESP32-S3 internal Bluetooth controller
+- Sensors: Connected via I2C/SPI for external data collection
 
 ## Pin Mapping
 
-LCD:
+**LCD:**
 
 - `SPI3_SCK` -> `GPIO12`
 - `SPI3_MOSI` -> `GPIO11`
@@ -33,7 +37,7 @@ LCD:
 - `LCD_BL` -> `GPIO7`
 - `LCD power enable` -> `GPIO18`
 
-Touch:
+**Touch:**
 
 - `I2C_SDA` -> `GPIO8`
 - `I2C_SCL` -> `GPIO9`
@@ -50,15 +54,17 @@ On boot, the application:
 2. initializes the display after deferred Zephyr device init
 3. starts LVGL
 4. creates a simple screen with a centered `Hello!` label
-5. listens for touch events from the touch controller
-6. updates the UI with the current touch position
+5. initializes the BLE stack and begins advertising as a connectable peripheral
+6. listens for touch events from the touch controller
+7. updates the UI with the current touch position
+8. streams live sensor data to any connected smartphone via a custom GATT service
 
-When the panel is touched:
+**When the panel is touched:**
 
 - a small dot is drawn under the finger
 - the bottom status label shows the transformed screen coordinates
 
-When the panel is released:
+**When the panel is released:**
 
 - the dot is hidden
 - the status text changes to `Touch released`
@@ -68,9 +74,9 @@ The display is rotated 180 degrees in devicetree so the UI matches the physical 
 ## Project Structure
 
 - [CMakeLists.txt](CMakeLists.txt): Zephyr app definition and source list
-- [prj.conf](prj.conf): Zephyr Kconfig options for console, shell, LVGL, display, input
+- [prj.conf](prj.conf): Zephyr Kconfig options for console, shell, LVGL, display, input, **and Bluetooth (BLE/GATT)**
 - [app.overlay](app.overlay): board-specific devicetree overlay with LCD and touch wiring
-- [src/main.c](src/main.c): minimal entry point
+- [src/main.c](src/main.c): minimal entry point, including BLE advertising and sensor polling logic
 - [src/panel.c](src/panel.c): LCD, touch, LVGL, and shell command logic
 - [build.sh](build.sh): local build/flash helper script
 

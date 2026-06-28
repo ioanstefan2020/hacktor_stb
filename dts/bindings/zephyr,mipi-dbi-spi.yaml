@@ -1,0 +1,20 @@
+description: MIPI DBI SPI interface
+compatible: "zephyr,mipi-dbi-spi"
+properties:
+  spi-dev:
+    type: phandle
+    required: true
+  dc-gpios:
+    type: phandle-array
+    required: true
+  reset-gpios:
+    type: phandle-array
+    required: false
+  write-only:
+    type: boolean
+  "#address-cells":
+    type: int
+    required: true
+  "#size-cells":
+    type: int
+    required: true
