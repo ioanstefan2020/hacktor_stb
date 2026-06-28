@@ -6,7 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 DEFAULT_BOARD="esp32s3_devkitm"
 export ZEPHYR_SDK_INSTALL_DIR="/home/chronosec/zephyr-sdk-0.16.1"
-#DEFAULT_BOARD="esp32s3_devkitc/esp32s3/procpu"
 
 if [ -d "$PROJECT_ROOT/../.venv/bin" ]; then
 	export PATH="$PROJECT_ROOT/../.venv/bin:$PATH"

@@ -1,147 +1,45 @@
-# Hacktor Basic
+# Hacktor STB Transit Watch 🚃
 
-Small Zephyr application for the `Hacktor Watch` that brings up a round SPI LCD, a capacitive touch panel, and streams sensor data over Bluetooth.
+This is a custom firmware I made for the Hacktor Watch built on Zephyr RTOS. Im really passioante about embedded systems and wanted to do something different than just a normal fitness tracker or analog clock. 
 
-The project currently does five things:
+Bassicly, this turns the watch into a live public transport (STB) dashboard for Bucharest. 
 
-- routes the Zephyr console and shell to the ESP32-S3 native USB serial/JTAG port
-- initializes a `GC9A01` 240x240 round LCD over `SPI3`
-- initializes a `CST816T`-style touch controller on `I2C`
-- runs a minimal LVGL UI that shows `Hello!`, touch coordinates, and a touch indicator dot
-- establishes a Bluetooth Low Energy (BLE) peripheral connection to send live sensor data to a smartphone
+## The Idea (Edge Computing)
+I realized that making a small ESP32-S3 watch connect to WiFi and parse massive JSON payloads from the STB API is a bad idea for battery life and RAM. So I decided to offload the compute to the smartphone:
+1. My phone fetches the real-time STB API data.
+2. The phone formats it into a tiny, simple string like `41,Ghencea,5` (Route 41, towards Ghencea, arriving in 5 mins).
+3. The phone sends this string over Bluetooth Low Energy (BLE) to the watch.
+4. The Zephyr RTOS on the watch gets the BLE interrupt, splits the string, and just updates the text on the screen.
 
+This way the watch does almost no heavy computing and saves alot of battery!
 
 ## Hardware
+Target board: `esp32s3_devkitc/esp32s3/procpu`
+- ESP32-S3 (dual core)
+- GC9A01 Round LCD screen (240x240) via SPI
+- Built-in ESP32 Bluetooth controller
 
-Target board:
+## Code Structure
+I gutted out all the unnecessary sensor code from the base hackathon project to keep it clean and focused just on the transit display:
+- `prj.conf` - My Zephyr config (enabled LVGL, SPI, BLE, but disabled all the IMU/Haptic/Battery stuff to save space)
+- `src/ble.c` - Sets up a custom GATT service (`12345678-1234-5678-1234-56789abcdef0`) to recive the transit string from the phone.
+- `src/transit_ui.c` - Uses the LVGL library to draw the clean digital interface (tram number, destination, minutes).
+- `src/main.c` - Inits the display, starts bluetooth advertising, and runs the UI loop.
 
-- `esp32s3_devkitc/esp32s3/procpu`
-
-Connected peripherals:
-
-- LCD controller: `GC9A01`
-- Touch controller: `CST816T` using Zephyr's `hynitron,cst816s` driver path
-- BLE Radio: ESP32-S3 internal Bluetooth controller
-- Sensors: Connected via I2C/SPI for external data collection
-
-## Pin Mapping
-
-**LCD:**
-
-- `SPI3_SCK` -> `GPIO12`
-- `SPI3_MOSI` -> `GPIO11`
-- `SPI3_MISO` -> `GPIO13`
-- `LCD_CS` -> `GPIO4`
-- `LCD_DC` -> `GPIO5`
-- `LCD_RST` -> `GPIO3`
-- `LCD_BL` -> `GPIO7`
-- `LCD power enable` -> `GPIO18`
-
-**Touch:**
-
-- `I2C_SDA` -> `GPIO8`
-- `I2C_SCL` -> `GPIO9`
-- `TP_INT` -> `GPIO1`
-- `TP_RST` -> `GPIO2`
-
-These connections are described in [app.overlay](app.overlay).
-
-## What The App Does
-
-On boot, the application:
-
-1. enables the LCD backlight
-2. initializes the display after deferred Zephyr device init
-3. starts LVGL
-4. creates a simple screen with a centered `Hello!` label
-5. initializes the BLE stack and begins advertising as a connectable peripheral
-6. listens for touch events from the touch controller
-7. updates the UI with the current touch position
-8. streams live sensor data to any connected smartphone via a custom GATT service
-
-**When the panel is touched:**
-
-- a small dot is drawn under the finger
-- the bottom status label shows the transformed screen coordinates
-
-**When the panel is released:**
-
-- the dot is hidden
-- the status text changes to `Touch released`
-
-The display is rotated 180 degrees in devicetree so the UI matches the physical mounting orientation.
-
-## Project Structure
-
-- [CMakeLists.txt](CMakeLists.txt): Zephyr app definition and source list
-- [prj.conf](prj.conf): Zephyr Kconfig options for console, shell, LVGL, display, input, **and Bluetooth (BLE/GATT)**
-- [app.overlay](app.overlay): board-specific devicetree overlay with LCD and touch wiring
-- [src/main.c](src/main.c): minimal entry point, including BLE advertising and sensor polling logic
-- [src/panel.c](src/panel.c): LCD, touch, LVGL, and shell command logic
-- [build.sh](build.sh): local build/flash helper script
-
-## Building
-
-The helper script expects a Zephyr workspace layout like this:
-
-- this repository in its current directory
-- Zephyr at `../zephyr`
-- optional Python virtual environment at `../.venv`
-
-Build:
-
-```bash
-./build.sh
-```
-
-Clean only:
-
-```bash
-./build.sh --clean
-```
-
-Pristine rebuild:
-
+## How to build it
+You need the Zephyr SDK installed. 
+Just run the build script:
 ```bash
 ./build.sh --pristine
 ```
 
-Override the default board if needed:
-
-```bash
-BOARD=esp32s3_devkitc/esp32s3/procpu ./build.sh
-```
 
 ## Flashing
 
 Flash the board:
 
 ```bash
-./build.sh --flash --port /dev/cu.usbmodemXXXX
+./build.sh --flash --port /dev/ttyACM0
 ```
 
-Optional erase before flashing:
 
-```bash
-./build.sh --flash --erase --port /dev/cu.usbmodemXXXX
-```
-
-After flashing, the script opens a serial terminal at `115200`.
-
-## USB Console And Shell
-
-The project routes both console and shell to the ESP32-S3 USB serial/JTAG peripheral.
-
-Once connected, Zephyr shell commands are available together with one project-specific command:
-
-```text
-app
-```
-
-`app` prints the current display geometry, orientation, and the latest touch state.
-
-## Notes
-
-- The LCD panel is configured through Zephyr's `galaxycore,gc9x01x` driver.
-- The touch controller is described as `hynitron,cst816s` in devicetree because that is the supported Zephyr driver path used by this hardware setup.
-- The application is intentionally small and focused on hardware bring-up rather than product UI structure.
